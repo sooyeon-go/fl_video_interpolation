@@ -146,6 +146,11 @@ setup_ltx() {
     # Install LTX packages into the conda env instead of uv's local .venv.
     "$python" -m pip install -e "$repo/packages/ltx-core"
     "$python" -m pip install -e "$repo/packages/ltx-pipelines"
+    # ltx deps can pull mismatched torchvision; force a compatible pair again.
+    "$python" -m pip install --force-reinstall --no-deps \
+        torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0
+    "$python" -m pip install --upgrade \
+        "transformers>=4.51.0" accelerate pillow ftfy
 }
 
 case "$TARGET" in

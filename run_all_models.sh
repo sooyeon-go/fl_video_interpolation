@@ -5,7 +5,7 @@ ROOT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
 FIRST=${1:-/data/project-vilab/sy/qwen/VQA_edit/out_batch/cat_1__to__cat_2/inputs/image_a.png}
 LAST=${2:-/data/project-vilab/sy/qwen/VQA_edit/out_batch/cat_1__to__cat_2/inputs/image_b.png}
-PROMPT=${3:-"고양이가 일어나서 눕는다."}
+PROMPT=${3:-"A cat slowly stands up and then lies down naturally."}
 OUT_DIR=${4:-"$ROOT_DIR/outputs/cat_1__to__cat_2"}
 FRAMES=${FRAMES:-81}
 NUM_GPUS=${NUM_GPUS:-1}

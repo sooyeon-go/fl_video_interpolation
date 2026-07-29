@@ -30,10 +30,35 @@ if [[ -z "$TARGET" ]]; then
     exit 2
 fi
 
+init_conda() {
+    local candidate
+    if command -v conda >/dev/null 2>&1; then
+        candidate="$(conda info --base 2>/dev/null)/etc/profile.d/conda.sh"
+        if [[ -f "$candidate" ]]; then
+            # shellcheck disable=SC1091
+            source "$candidate"
+            return 0
+        fi
+    fi
+    for candidate in \
+        /opt/conda/etc/profile.d/conda.sh \
+        "$HOME/miniconda3/etc/profile.d/conda.sh" \
+        "$HOME/anaconda3/etc/profile.d/conda.sh" \
+        "$HOME/mambaforge/etc/profile.d/conda.sh"
+    do
+        if [[ -f "$candidate" ]]; then
+            # shellcheck disable=SC1091
+            source "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
 resolve_tools() {
     local conda_base
-    if ! command -v conda >/dev/null 2>&1; then
-        echo "conda was not found. Run ./setup_envs.sh tools first." >&2
+    if ! init_conda; then
+        echo "conda was not found. Run: bash setup_envs.sh tools" >&2
         exit 1
     fi
     conda_base="$(conda info --base)"

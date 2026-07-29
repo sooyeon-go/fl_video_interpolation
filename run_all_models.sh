@@ -8,7 +8,10 @@ LAST=${2:-/data/project-vilab/sy/qwen/VQA_edit/out_batch/cat_1__to__cat_2/inputs
 PROMPT=${3:-"고양이가 일어나서 눕는다."}
 OUT_DIR=${4:-"$ROOT_DIR/outputs/cat_1__to__cat_2"}
 FRAMES=${FRAMES:-81}
-NUM_GPUS=${NUM_GPUS:-8}
+NUM_GPUS=${NUM_GPUS:-1}
+GPU_ID=${GPU_ID:-1}
+
+export CUDA_VISIBLE_DEVICES="$GPU_ID"
 
 mkdir -p "$OUT_DIR"
 
@@ -17,6 +20,8 @@ echo "First : $FIRST"
 echo "Last  : $LAST"
 echo "Prompt: $PROMPT"
 echo "Out   : $OUT_DIR"
+echo "GPU   : $GPU_ID (CUDA_VISIBLE_DEVICES)"
+echo "nproc : $NUM_GPUS"
 echo "========================================"
 
 run_one() {

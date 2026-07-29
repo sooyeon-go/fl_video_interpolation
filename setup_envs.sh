@@ -112,7 +112,8 @@ setup_wan() {
     "$python" -m pip install --upgrade pip
     "$python" -m pip install \
         torch==2.6.0 torchvision==0.21.0 \
-        transformers accelerate imageio imageio-ffmpeg pillow sentencepiece
+        transformers accelerate imageio imageio-ffmpeg pillow sentencepiece \
+        ftfy protobuf regex
     "$python" -m pip install --upgrade \
         "diffusers @ git+https://github.com/huggingface/diffusers.git"
 }
@@ -127,7 +128,7 @@ setup_omni() {
     python="$(conda_python "$ENV_OMNI")"
     "$python" -m pip install --upgrade pip wheel setuptools
     "$python" -m pip install \
-        torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0
+        torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 ftfy
     "$python" -m pip install -r "$repo/requirements.txt"
 }
 
@@ -141,7 +142,7 @@ setup_ltx() {
     python="$(conda_python "$ENV_LTX")"
     "$python" -m pip install --upgrade pip wheel setuptools
     "$python" -m pip install \
-        torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0
+        torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 ftfy
     # Install LTX packages into the conda env instead of uv's local .venv.
     "$python" -m pip install -e "$repo/packages/ltx-core"
     "$python" -m pip install -e "$repo/packages/ltx-pipelines"

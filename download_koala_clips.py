@@ -106,9 +106,27 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Only count rows matching the score thresholds; do not download videos.",
     )
-    parser.add_argument(
+    authentication = parser.add_mutually_exclusive_group()
+    authentication.add_argument(
         "--cookies-from-browser",
         help="Browser name passed to yt-dlp, e.g. chrome or firefox.",
+    )
+    authentication.add_argument(
+        "--cookies",
+        type=Path,
+        help="Netscape-format cookies.txt exported from a logged-in browser.",
+    )
+    parser.add_argument(
+        "--sleep-interval",
+        type=float,
+        default=1.0,
+        help="Minimum delay before each download in seconds (default: 1).",
+    )
+    parser.add_argument(
+        "--max-sleep-interval",
+        type=float,
+        default=5.0,
+        help="Maximum randomized download delay in seconds (default: 5).",
     )
     parser.add_argument(
         "--no-exact-cuts",
@@ -154,6 +172,7 @@ def iter_clips(
     min_clarity: float | None,
     min_motion: float,
     max_duration: float | None,
+    completed_stems: set[str],
 ) -> Iterator[Clip]:
     visited_rows = 0
     yielded_clips = 0
@@ -196,6 +215,8 @@ def iter_clips(
                     continue
                 duration = timestamp_to_seconds(end) - timestamp_to_seconds(start)
                 if max_duration is not None and duration > max_duration:
+                    continue
+                if safe_stem(row["videoID"]) in completed_stems:
                     continue
 
                 yield Clip(
@@ -254,11 +275,25 @@ def safe_stem(video_id: str) -> str:
     return stem or "clip"
 
 
+def find_completed_stems(output_dir: Path) -> set[str]:
+    completed_stems = set()
+    for output_path in output_dir.glob("*.mp4"):
+        try:
+            if output_path.stat().st_size > 0:
+                completed_stems.add(output_path.stem)
+        except OSError:
+            continue
+    return completed_stems
+
+
 def download_clip(
     clip: Clip,
     output_dir: Path,
     max_height: int,
     cookies_from_browser: str | None,
+    cookies: Path | None,
+    sleep_interval: float,
+    max_sleep_interval: float,
     exact_cuts: bool,
     dry_run: bool,
 ) -> DownloadResult:
@@ -274,6 +309,12 @@ def download_clip(
         "5",
         "--fragment-retries",
         "5",
+        "--sleep-requests",
+        "1",
+        "--sleep-interval",
+        str(sleep_interval),
+        "--max-sleep-interval",
+        str(max_sleep_interval),
         "--download-sections",
         f"*{clip.start}-{clip.end}",
         "--format",
@@ -292,6 +333,8 @@ def download_clip(
         command.append("--force-keyframes-at-cuts")
     if cookies_from_browser:
         command.extend(["--cookies-from-browser", cookies_from_browser])
+    if cookies:
+        command.extend(["--cookies", str(cookies)])
     command.append(clip.url)
 
     if dry_run:
@@ -364,6 +407,17 @@ def main() -> int:
         raise ValueError("--limit and --start-row must be non-negative")
     if args.workers < 1:
         raise ValueError("--workers must be at least 1")
+    if args.sleep_interval < 0:
+        raise ValueError("--sleep-interval must be non-negative")
+    if args.max_sleep_interval < args.sleep_interval:
+        raise ValueError(
+            "--max-sleep-interval must be greater than or equal to "
+            "--sleep-interval"
+        )
+    if args.cookies:
+        args.cookies = args.cookies.expanduser().resolve()
+        if not args.cookies.is_file():
+            raise FileNotFoundError(f"Cookie file not found: {args.cookies}")
 
     validate_environment(args.dry_run, args.count_only)
     if args.csv:
@@ -385,6 +439,11 @@ def main() -> int:
 
     output_dir = args.output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    completed_stems = find_completed_stems(output_dir)
+    print(
+        f"Resume: found {len(completed_stems):,} completed MP4 files; "
+        "they will be skipped."
+    )
     clips = iter_clips(
         csv_paths=csv_paths,
         start_row=args.start_row,
@@ -392,6 +451,7 @@ def main() -> int:
         min_clarity=args.min_clarity,
         min_motion=args.min_motion,
         max_duration=args.max_duration,
+        completed_stems=completed_stems,
     )
 
     manifest_path = output_dir / "manifest.jsonl"
@@ -406,6 +466,9 @@ def main() -> int:
                         output_dir,
                         args.max_height,
                         args.cookies_from_browser,
+                        args.cookies,
+                        args.sleep_interval,
+                        args.max_sleep_interval,
                         not args.no_exact_cuts,
                         args.dry_run,
                     ): clip
